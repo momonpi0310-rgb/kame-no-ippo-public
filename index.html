@@ -573,6 +573,20 @@
       }
       .chat-send:active { transform: scale(0.97); }
       .chat-note { flex: none; padding: 0 10px 10px; margin: 0; font-size: 0.78rem; color: var(--ink-soft); background: var(--card); border-radius: 0 0 22px 22px; }
+      /* quiet clear-conversation control under the talk card: same
+         understated underlined style as the help / danger links, with a
+         pill-shaped confirming state for the second tap */
+      .chat-tools { margin-top: 12px; text-align: center; }
+      .chat-clear-btn {
+        border: 2px solid transparent; background: transparent; color: var(--ink-soft); font-weight: 700;
+        text-decoration: underline; text-underline-offset: 4px; padding: 10px 16px; min-height: 44px;
+        font-size: 0.88rem; border-radius: 999px;
+      }
+      .chat-clear-btn:active { opacity: 0.65; }
+      .chat-clear-btn.confirming {
+        color: var(--pink-deep); text-decoration: none;
+        border-color: var(--pink); background: var(--pink-soft);
+      }
       /* ---------- chat input bar: always reachable on a phone ----------
          On small screens the bar sticks to the bottom of the visible area
          while scrolling. While the on-screen keyboard is open (body.chat-kb,
@@ -1627,7 +1641,7 @@
         <div class="card help-card">
           <ul class="help-list">
             <li>記録は、自分のスマホの中にだけ残ります。誰かに送られることはありません。</li>
-            <li>おはなしの内容は残りません。画面を閉じたら消えるよ。</li>
+            <li>おはなしの会話も、自分のスマホの中にだけ残ります。消したいときは、おはなし画面の『会話を消す』ボタンで消せるよ。</li>
             <li>このページが新しくなっても、記録はそのまま残るよ。</li>
           </ul>
         </div>
@@ -1661,7 +1675,10 @@
             <input id="chatInput" type="text" maxlength="200" placeholder="カメに話しかけてみてね" autocomplete="off" aria-label="カメへのメッセージ" />
             <button type="submit" class="chat-send">送る</button>
           </form>
-          <p class="chat-note">おはなしの返事はAIが作ることがあります。いちばん重い言葉のときだけ、今まで通りの固定の返事です。会話はこの画面の中だけに残ります。閉じると消えるよ。</p>
+          <p class="chat-note">おはなしの返事はAIが作ることがあります。いちばん重い言葉のときだけ、今まで通りの固定の返事です。会話はこの端末の中にだけ残るよ。消したいときは『会話を消す』ボタンで消せるよ。</p>
+        </div>
+        <div class="chat-tools">
+          <button type="button" class="chat-clear-btn" id="clearTalkBtn">会話を消す</button>
         </div>
       </section>
 
@@ -2617,6 +2634,54 @@
         var chatInput = document.getElementById("chatInput");
         var chatForm = document.getElementById("chatForm");
         var chatBusy = false;
+        /* ---------- talk persistence (this device only) ----------
+           The conversation is kept in this browser (localStorage) so it is
+           still here next time the talk screen opens. Only the visible
+           timeline is saved, as {who, text} with who "me" / "turtle",
+           capped at the newest 100 messages. It is never sent anywhere
+           except the existing AI relay history (last 10 turns, as before). */
+        var TALK_KEY = "kame-no-ippo-public-talk-v1";
+        var TALK_MAX = 100;
+        function normalizeTalkWho(who) {
+          if (who === "me" || who === "user") return "me";
+          if (who === "turtle" || who === "kame") return "turtle";
+          return null;
+        }
+        function loadTalkSaved() {
+          try {
+            var rawSaved = localStorage.getItem(TALK_KEY);
+            if (!rawSaved) return [];
+            var parsed = JSON.parse(rawSaved);
+            if (!Array.isArray(parsed)) return [];
+            var out = [];
+            parsed.forEach(function (m) {
+              if (!m || typeof m.text !== "string" || !m.text) return;
+              var w = normalizeTalkWho(m.who);
+              if (!w) return;
+              out.push({ who: w, text: m.text });
+            });
+            return out.slice(-TALK_MAX);
+          } catch (e) { return []; }
+        }
+        var talkSaved = loadTalkSaved();
+        function saveTalkSaved() {
+          try {
+            if (talkSaved.length > TALK_MAX) talkSaved = talkSaved.slice(-TALK_MAX);
+            localStorage.setItem(TALK_KEY, JSON.stringify(talkSaved));
+          } catch (e) {}
+        }
+        function pushTalkSaved(who, text) {
+          if (!text) return;
+          var w = normalizeTalkWho(who);
+          if (!w) return;
+          talkSaved.push({ who: w, text: text });
+          if (talkSaved.length > TALK_MAX) talkSaved = talkSaved.slice(-TALK_MAX);
+          saveTalkSaved();
+        }
+        function clearTalkSaved() {
+          talkSaved = [];
+          try { localStorage.removeItem(TALK_KEY); } catch (e) {}
+        }
         var TURTLE_MINI = '<svg width="20" height="16" viewBox="0 0 48 36" aria-hidden="true"><path d="M5.2 24.6c-2 .3-3.1 1.5-2.7 2.9.7 1.1 3 .8 3.9-.5.3-1-.2-2.2-1.2-2.4z" fill="#ffefb5" stroke="#5b4a56" stroke-width="1.4" stroke-linejoin="round"/><ellipse cx="13" cy="29.6" rx="4.4" ry="2.4" fill="#ffefb5" stroke="#5b4a56" stroke-width="1.3"/><ellipse cx="26.5" cy="29.6" rx="4.4" ry="2.4" fill="#ffefb5" stroke="#5b4a56" stroke-width="1.3"/><path d="M6.5 26.5a14 13.8 0 0 1 28 0z" fill="#7ad6ab" stroke="#5b4a56" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.8 15.6q-1.9 5.2-1.7 10.9M20.5 13.9q-1.1 6-1 12.6M27.2 15.6q1.9 5.2 1.7 10.9M8.2 20.6q12.3-3.6 24.6 0" fill="none" stroke="#eafaf1" stroke-width="1.1" opacity="0.55" stroke-linecap="round"/><ellipse cx="15" cy="18.5" rx="5.8" ry="3" fill="#ffffff" opacity="0.35" transform="rotate(-14 15 18.5)"/><path transform="translate(11.5,16.8) scale(0.42)" d="M12 1 L14.2 9.8 L23 12 L14.2 14.2 L12 23 L9.8 14.2 L1 12 L9.8 9.8 Z" fill="#ffffff"/><path transform="translate(20.8,19.6) scale(0.58)" d="M10 17.5 C5.8 13.4 2.5 10.2 2.5 6.6 C2.5 4 4.4 2.2 6.8 2.2 C8.4 2.2 9.6 3 10 4.1 C10.4 3 11.6 2.2 13.2 2.2 C15.6 2.2 17.5 4 17.5 6.6 C17.5 10.2 14.2 13.4 10 17.5 Z" fill="#f7a8c4"/><path d="M6.5 23.8h28v2.2q-2.8 3.6 -5.6 0q-2.8 3.6 -5.6 0q-2.8 3.6 -5.6 0q-2.8 3.6 -5.6 0q-2.8 3.6 -5.6 0z" fill="#c9f2dd" stroke="#5b4a56" stroke-width="1.2" stroke-linejoin="round"/><circle cx="39" cy="20.5" r="8.4" fill="#fff3c2" stroke="#5b4a56" stroke-width="1.6"/><ellipse cx="39" cy="26.6" rx="5.4" ry="2" fill="#e9d489" opacity="0.45"/><ellipse cx="36.2" cy="15.8" rx="2.7" ry="1.5" fill="#ffffff" opacity="0.55" transform="rotate(-18 36.2 15.8)"/><ellipse cx="34.8" cy="23.6" rx="2.5" ry="1.7" fill="#f9a8c6" opacity="0.9"/><path d="M37.7 18.9q3.3 2.7 6.6 0" stroke="#5b4a56" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M42.2 23.4q1.4 1.4 2.9 0" stroke="#5b4a56" stroke-width="1.2" fill="none" stroke-linecap="round"/><g transform="translate(32.6,13.2) rotate(-12)"><path d="M0 0 L-5.2 -3 L-4.8 2.8 Z" fill="#c5bcf7" stroke="#5b4a56" stroke-width="1.1" stroke-linejoin="round"/><path d="M0 0 L5 -3.2 L5.2 2.6 Z" fill="#c5bcf7" stroke="#5b4a56" stroke-width="1.1" stroke-linejoin="round"/><circle cx="0" cy="0" r="1.9" fill="#f7a8c4" stroke="#5b4a56" stroke-width="1.1"/></g></svg>';
         /* keep the newest bubble fully visible: scroll now, and once more
            after the frame settles (font/layout can shift heights slightly) */
@@ -2691,7 +2756,7 @@
            ミソは「なるべく短文で、どれだけユーモアと癒しが詰まっているか」。
            安全判定（最強・重い言葉・関係の不安・記録）は端末の中で判定し、
            固定返事を出す。それ以外の日常会話だけ、中継API経由でAIの返事を
-           使うことがある。会話は保存しない（この画面の中だけ）。 */
+           使うことがある。会話はこの端末の中にだけ保存される。 */
         /* 会話の状態（段階式）：
            stage 0 ふだん
            stage 1 いっぱいいっぱい：共感・肯定・そばにいることだけ。提案・促しは出さない
@@ -3357,8 +3422,8 @@
            それ以外の日常会話・軽い相談だけを中継APIに送る。
            AIの返事は事後チェックを通った場合だけ表示し、失敗・タイムアウト
            （12秒）・チェック不合格のときは既存のルール返事に切り替える。
-           返事が来ない状態は作らない。会話履歴はこの画面の中だけに持ち、
-           保存しない。 */
+           返事が来ない状態は作らない。会話履歴はこの端末の中にだけ保存し、
+           中継へは直近10ターンだけ渡す。 */
         var KAME_TALK_API = "https://kame-no-ippo.vercel.app/api/kame-talk-public";
         var KAME_TALK_TOKEN = "kame-ippo-2026";
         var KAME_TALK_TIMEOUT_MS = 12000;
@@ -3452,6 +3517,7 @@
           var sootheFlag = (kameSootheLeft > 0 || kameStage === 1 || kameStage === 2);
           var fixedCase = kameIsFixedCase(text);
           addMsg("me", text);
+          pushTalkSaved("me", text);
           if (raw == null) chatInput.value = "";
           /* ルール返事は1回だけ組み立てる（エンジンの状態遷移もここで1回だけ）。
              固定ケースではこれがそのまま答えになり、AIケースでは
@@ -3473,6 +3539,7 @@
             scrollChatBottom();
             kamePushHistory("user", text);
             kamePushHistory("kame", finalReply);
+            pushTalkSaved("turtle", finalReply);
             chatBusy = false;
             if (!chatInput.value) { try { chatInput.focus(); } catch (e) {} }
           }
@@ -3546,11 +3613,21 @@
             if (document.body.classList.contains("chat-kb")) syncKeyboardVars();
           });
         }
-        /* 入室時：トーク画面を開いたら、かめさんから先に短く話しかける（名前があれば呼ぶ） */
+        /* 入室時：保存済みの会話があればタイムラインに復元し、なければ
+           かめさんから先に短く話しかける（名前があれば呼ぶ） */
         var greeted = false;
         function greetTurtle() {
           if (greeted) return;
           greeted = true;
+          if (talkSaved.length) {
+            var restored = talkSaved.slice();
+            restored.forEach(function (m) {
+              addMsg(m.who, m.text);
+              kamePushHistory(m.who === "me" ? "user" : "kame", m.text);
+            });
+            scrollChatBottom();
+            return;
+          }
           var h = new Date().getHours();
           var g = h < 11 ? "おはよう" : h >= 17 ? "こんばんは" : "やあ";
           var who = userName ? userName + "さん" : "";
@@ -3558,7 +3635,45 @@
                           : g + "。……カメは、かめさん。ここにいるよ。";
           var greetText = first + "\n短くても大丈夫。「つかれた」だけでも、いいよ。";
           addMsg("turtle", greetText);
+          pushTalkSaved("turtle", greetText);
           kamePushHistory("kame", greetText);
+        }
+
+        /* ---------- 会話を消す（2段階確認） ----------
+           1回目でボタンの表示が確認文に変わり、数秒で元に戻る。
+           2回目で保存と表示の両方を消し、挨拶から再開する。 */
+        var clearTalkBtn = document.getElementById("clearTalkBtn");
+        var clearTalkArmed = false;
+        var clearTalkTimer = null;
+        function resetClearTalkBtn() {
+          clearTalkArmed = false;
+          if (clearTalkTimer) { clearTimeout(clearTalkTimer); clearTalkTimer = null; }
+          if (clearTalkBtn) {
+            clearTalkBtn.textContent = "会話を消す";
+            clearTalkBtn.classList.remove("confirming");
+          }
+        }
+        if (clearTalkBtn) {
+          clearTalkBtn.addEventListener("click", function () {
+            if (!clearTalkArmed) {
+              clearTalkArmed = true;
+              clearTalkBtn.textContent = "ほんとうに消す？ もう一度押すと消えるよ";
+              clearTalkBtn.classList.add("confirming");
+              clearTalkTimer = setTimeout(resetClearTalkBtn, 4500);
+              return;
+            }
+            resetClearTalkBtn();
+            clearTalkSaved();
+            kameHistory = [];
+            kameStage = 0;
+            kameSootheLeft = 0;
+            kameCalmSigns = 0;
+            kameJustTipped = 0;
+            chatLog.innerHTML = "";
+            greeted = false;
+            greetTurtle();
+            try { toast("会話を消したよ"); } catch (e) {}
+          });
         }
 
         /* ---------- mogu-mogu monster: eats the paper, keeps nothing ---------- */
