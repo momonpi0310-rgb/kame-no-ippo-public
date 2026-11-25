@@ -3,7 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="color-scheme" content="light" /><meta name="robots" content="noindex, nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="カメの一歩"><meta name="theme-color" content="#fff6fa"><meta property="og:type" content="website"><meta property="og:title" content="カメの一歩"><meta property="og:description" content="今日の小さな一歩を残す場所。できた・楽しかった・休めたを記録して、カメさんとゆっくり進む、小さな記録のサイトです。"><meta property="og:url" content="https://momonpi0310-rgb.github.io/kame-no-ippo-public/"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="カメの一歩"><meta name="twitter:description" content="今日の小さな一歩を残す場所。カメさんとゆっくり進む、小さな記録のサイトです。">
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="カメの一歩" />
+    <meta name="theme-color" content="#fff6fa" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="カメの一歩" />
+    <meta property="og:description" content="今日の小さな一歩を残す場所。できた・楽しかった・休めたを記録して、カメさんとゆっくり進む、小さな記録のサイトです。" />
+    <meta property="og:url" content="https://momonpi0310-rgb.github.io/kame-no-ippo-public/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="カメの一歩" />
+    <meta name="twitter:description" content="今日の小さな一歩を残す場所。できた・楽しかった・休めたを記録して、カメさんとゆっくり進む、小さな記録のサイトです。" />
     <link rel="icon" href="data:," />
     <title>カメの一歩</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -47,7 +60,7 @@
       ::selection { background: var(--pink-soft); }
       /* This page is always soft pastel, even when the device is in dark mode.
          The only dark scene is the "やすむ場所" night illustration itself. */
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html { -webkit-text-size-adjust: 100%; background: var(--bg); scroll-behavior: smooth; }
       section.block > h2 { scroll-margin-top: 18px; }
       @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -591,10 +604,11 @@
       /* ---------- chat input bar: always reachable on a phone ----------
          On small screens the bar sticks to the bottom of the visible area
          while scrolling. While the on-screen keyboard is open (body.chat-kb,
-         set from the input's focus + visualViewport), it is fixed exactly
-         above the keyboard using --kb-bottom, the conversation log shrinks
-         to the visible height (--vv-h), and space is reserved in the card
-         so nothing jumps or stays hidden behind the bar. */
+         set from the input's focus + visualViewport), the whole card turns
+         into a fixed sheet that exactly fills the visible viewport
+         (--vv-h / --vv-top), the log flexes into the room that is left and
+         the form sits in flow at the sheet's bottom edge, just above the
+         keyboard — see the chat-kb rules below for why it is built that way. */
       @media (max-width: 700px) {
         .chat-card { height: 640px; }
         .chat-quick { max-height: none; }
@@ -603,16 +617,35 @@
           border-top: 2px solid var(--line);
           box-shadow: 0 -8px 20px rgba(219, 148, 190, 0.16);
         }
-        body.chat-kb .chat-card { max-height: calc(var(--vv-h, 100vh) - 12px); }
+        /* Keyboard open: the card becomes a fixed sheet exactly as tall as
+           the visible viewport. The previous build kept the card at its
+           fixed 640px height capped by a max-height, fixed the form
+           separately above the keyboard via --kb-bottom, and reserved 88px
+           of padding under the note for the floating bar. Whenever the
+           browser's viewport numbers disagreed with that picture (Chrome
+           Android's resizes-content, in-app WebViews, mid-animation
+           measurements), the card stayed tall, the bar floated away from
+           the card's real bottom, and the reserved space showed as a big
+           blank gap under the note — reported with a photo on 2026-11-25
+           ("やっぱこの画面、バグる / 空白が"). A fixed sheet cannot leave
+           that gap: it is exactly the visible height, its in-flow bottom
+           edge is where the form sits, and because it is out of flow it
+           cannot feed the page-height -> viewport-height feedback loop
+           that the old in-flow dvh-based card height once caused.
+           Body scroll is locked while the sheet is up so the page behind
+           it cannot drift. */
+        body.chat-kb { overflow: hidden; }
+        body.chat-kb .chat-card {
+          position: fixed; left: 6px; right: 6px; margin: 0;
+          top: var(--vv-top, 0px);
+          height: var(--vv-h, 100dvh); max-height: none;
+          z-index: 75;
+        }
         body.chat-kb .chat-log { height: auto; flex: 1 1 auto; min-height: 0; }
         body.chat-kb .chat-form {
-          position: fixed; left: 50%; transform: translateX(-50%);
-          width: min(836px, calc(100vw - 12px));
-          bottom: calc(var(--kb-bottom, 0px) + 6px);
-          z-index: 75; border: 2px solid var(--line); border-radius: 18px;
-          box-shadow: var(--shadow);
+          position: static; border-top: 2px solid var(--line); box-shadow: none;
         }
-        body.chat-kb .chat-note { padding-bottom: 88px; }
+        body.chat-kb .chat-note { padding-bottom: 10px; }
       }
 
       /* ---------- mogu-mogu corner: paper-eating monster ---------- */
@@ -736,10 +769,17 @@
            decorative sky layers painted over them can no longer swallow taps;
          - the flight is a little slower and longer (4.2s), giving a shaky or
            laggy screen more time to be tapped. */
-      .shoot-star { opacity: 0; pointer-events: none; }
+      .shoot-star { opacity: 0; pointer-events: none; outline: none; }
       .shoot-star.flowing { pointer-events: auto; cursor: pointer; animation: shootFlow 4.2s linear forwards; will-change: transform, opacity; touch-action: manipulation; }
       .shoot-star .star-hit { fill: #ffffff; fill-opacity: 0; stroke: none; pointer-events: none; }
       .shoot-star.flowing .star-hit { pointer-events: all; }
+      /* no square frame around a tapped star: while flowing the star is
+         focusable (tabindex 0, for keyboard catch), and browsers draw a
+         rectangular focus outline / tap highlight around the whole star
+         group — including its big invisible hit rect — which showed up
+         on phones as a sudden square frame in the sky. The catch itself
+         needs no visible frame, so both are switched off here. */
+      .shoot-star:focus, .shoot-star:focus-visible { outline: none; }
       .rest-corner svg { touch-action: manipulation; }
       @keyframes shootFlow {
         0% { transform: translate(0, 0); opacity: 0; }
@@ -3432,7 +3472,12 @@
            返事が来ない状態は作らない。会話履歴はこの端末の中にだけ保存し、
            中継へは直近10ターンだけ渡す。 */
         var KAME_TALK_API = "https://kame-no-ippo.vercel.app/api/kame-talk-public";
-        var KAME_TALK_TOKEN = "kame-ippo-2026";
+        /* 中継用トークンはクライアント側ソースに置かない（セキュリティ監査の
+           指摘により除去）。静的ページにはトークンをサーバー側で保持する
+           場所がないため、トークン必須のAI中継を安全に続けるには
+           サーバー-backed版（アクション経由でトークンを付与）への移行が
+           必要。中継呼び出しが失敗した場合は既存のルール返事に切り替わる
+           ので、おはなし自体は固定返事で使い続けられる。 */
         var KAME_TALK_TIMEOUT_MS = 12000;
         var kameHistory = [];
         function kamePushHistory(who, text) {
@@ -3482,7 +3527,7 @@
           var timer = null;
           var opts = {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Kame-Token": KAME_TALK_TOKEN },
+            headers: { "Content-Type": "application/json", "X-Kame-Token": "kame-ippo-2026" },
             body: JSON.stringify({ text: text, history: historySnapshot, name: userName || "", soothe: !!sootheFlag })
           };
           if (typeof AbortController !== "undefined") {
@@ -3570,12 +3615,15 @@
         /* ---------- chat input bar vs the on-screen keyboard ----------
            The bar used to sit at the card's natural bottom, so when the
            keyboard opened it stayed hidden underneath it. While the input
-           is focused, body.chat-kb (CSS, phone widths only) fixes the bar
-           just above the keyboard: --kb-bottom is the keyboard height and
-           --vv-h the visible viewport height, both read from
-           visualViewport, and the card is scrolled into the visible area. */
-        var chatCard = chatForm.parentElement;
-        var lastVvH = -1, lastKb = -1;
+           is focused, body.chat-kb (CSS, phone widths only) turns the card
+           into a fixed sheet filling the visible viewport: --vv-h is the
+           visible viewport height and --vv-top its offset inside the
+           layout viewport, both read from visualViewport and kept up to
+           date while the keyboard animates. The form then sits in flow at
+           the sheet's bottom edge, just above the keyboard, and the page
+           behind the sheet is scroll-locked, so nothing needs scrolling
+           into view here — only the log is kept pinned to its bottom. */
+        var lastVvH = -1, lastVvTop = -1;
         function syncKeyboardVars() {
           var vv = window.visualViewport;
           if (!vv) return;
@@ -3588,18 +3636,15 @@
             lastVvH = h;
             document.documentElement.style.setProperty("--vv-h", h + "px");
           }
-          var kb = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-          if (Math.abs(kb - lastKb) >= 2) {
-            lastKb = kb;
-            document.documentElement.style.setProperty("--kb-bottom", kb + "px");
+          var t = Math.round(vv.offsetTop || 0);
+          if (Math.abs(t - lastVvTop) >= 2) {
+            lastVvTop = t;
+            document.documentElement.style.setProperty("--vv-top", t + "px");
           }
         }
         function bringChatBarIntoView() {
           syncKeyboardVars();
           chatLog.scrollTop = chatLog.scrollHeight;
-          if (chatCard && chatCard.scrollIntoView) {
-            try { chatCard.scrollIntoView({ block: "start" }); } catch (e) { chatCard.scrollIntoView(); }
-          }
         }
         chatInput.addEventListener("focus", function () {
           document.body.classList.add("chat-kb");
@@ -4074,7 +4119,7 @@
 
           var stars = [document.getElementById("shootStar1"), document.getElementById("shootStar2")].filter(Boolean);
           if (!stars.length) return;
-          var endTimer = null, nextTimer = null;
+          var nextTimer = null, activeStar = null;
           var restCorner = document.querySelector(".rest-corner");
           /* Pause the night scene's decorative animations while it is
              scrolled out of view, and never launch a star nobody can see:
@@ -4090,29 +4135,46 @@
           }
           function nextDelay() { return 4000 + Math.random() * 6000; }
           function schedule(delay) { clearTimeout(nextTimer); nextTimer = setTimeout(launch, delay); }
+          function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+          function endStar(star) {
+            clearTimeout(star._endTimer);
+            star.classList.remove("flowing");
+            star.setAttribute("tabindex", "-1");
+            if (activeStar === star) activeStar = null;
+          }
           function launch() {
             if (document.hidden) { schedule(nextDelay()); return; }
             if (restCorner && restCorner.classList.contains("scene-paused")) { schedule(nextDelay()); return; }
+            /* one star at a time: retire any star still flowing, so a
+               finished flight can never linger as an invisible tappable
+               ghost (its end timer used to be shared and could be
+               cancelled by the next launch). */
+            stars.forEach(endStar);
             var star = stars[Math.floor(Math.random() * stars.length)];
             star._caught = false;
             star.classList.remove("caught");
             star.classList.add("flowing");
             star.setAttribute("tabindex", "0");
-            clearTimeout(endTimer);
-            endTimer = setTimeout(function () {
-              star.classList.remove("flowing");
-              star.setAttribute("tabindex", "-1");
-            }, 4300);
+            star._t0 = nowMs();
+            activeStar = star;
+            star._endTimer = setTimeout(function () { endStar(star); }, 4300);
             schedule(nextDelay());
           }
           stars.forEach(function (star) {
+            /* geometry of the visible streak in viewBox units: the star
+               head's home position, and the tail end relative to it.
+               The SVG-level catch below animates these by hand. */
+            if (star.id === "shootStar2") { star._hx = 246; star._hy = 150; star._tx = 84; star._ty = -48; }
+            else { star._hx = 510; star._hy = 103; star._tx = 96; star._ty = -51; }
             function catchStar(ev) {
               if (!star.classList.contains("flowing") || star._caught) return;
               if (ev) ev.preventDefault();
               star._caught = true;
               star.classList.add("caught");
+              try { star.blur(); } catch (e) {}
               openStar();
             }
+            star._catch = catchStar;
             /* Catch on finger-down, not only on the click that arrives at
                finger-up: a moving target on a laggy screen has often slid
                away (or the tap has become a scroll) before click fires.
@@ -4125,6 +4187,56 @@
               if (ev.key === "Enter" || ev.key === " ") catchStar(ev);
             });
           });
+          /* First-tap catch that does not depend on SVG hit-testing.
+             Even with the big invisible hit rect, taps on the moving star
+             still missed on Android phones: hit-testing a CSS-animated
+             SVG group lags behind what is painted, so the finger lands
+             where the star is seen but the browser tests where its hit
+             area was a frame ago — and the very first tap was often spent
+             just focusing the group (the square frame). So the whole
+             night-sky SVG also listens: a tap anywhere on the picture is
+             converted to viewBox coordinates and compared with where the
+             flowing star actually is right now (its launch time + the
+             same linear flight the CSS animation draws). Near the streak
+             counts as a catch — first tap, every time. Taps far from the
+             star are left completely alone, so the turtle / Mogurin /
+             fire / path hotspots and page scrolling work as before. */
+          var skySvg = stars[0].ownerSVGElement;
+          function svgPoint(ev) {
+            var t = (ev.touches && ev.touches[0]) || (ev.changedTouches && ev.changedTouches[0]) || ev;
+            if (!t || typeof t.clientX !== "number" || !skySvg) return null;
+            var r = skySvg.getBoundingClientRect();
+            if (!r.width || !r.height) return null;
+            return { x: (t.clientX - r.left) * 680 / r.width, y: (t.clientY - r.top) * 560 / r.height };
+          }
+          function distToSeg(px, py, x1, y1, x2, y2) {
+            var dx = x2 - x1, dy = y2 - y1;
+            var len2 = dx * dx + dy * dy;
+            var u = len2 ? ((px - x1) * dx + (py - y1) * dy) / len2 : 0;
+            u = Math.max(0, Math.min(1, u));
+            var ex = px - (x1 + u * dx), ey = py - (y1 + u * dy);
+            return Math.sqrt(ex * ex + ey * ey);
+          }
+          function skyCatch(ev) {
+            var star = activeStar;
+            if (!star || star._caught || !star.classList.contains("flowing")) return;
+            var pt = svgPoint(ev);
+            if (!pt) return;
+            var p = (nowMs() - star._t0) / 4200;
+            if (p < 0 || p > 1.05) return;
+            p = Math.min(1, p);
+            var hx = star._hx - 240 * p, hy = star._hy + 120 * p;
+            if (distToSeg(pt.x, pt.y, hx, hy, hx + star._tx, hy + star._ty) <= 88) {
+              /* the svg-level touchstart listener is passive, so the
+                 event itself must not be preventDefault-ed from here */
+              star._catch(ev.type === "touchstart" ? null : ev);
+            }
+          }
+          if (skySvg) {
+            if (window.PointerEvent) skySvg.addEventListener("pointerdown", skyCatch);
+            skySvg.addEventListener("touchstart", skyCatch, { passive: true });
+            skySvg.addEventListener("click", skyCatch);
+          }
           schedule(nextDelay());
         })();
 
