@@ -80,7 +80,9 @@
       }
       button, [role="button"], select, input:not([type="checkbox"], [type="radio"]) { min-height: 2.25rem; }
       button { font-family: inherit; cursor: pointer; }
-      .wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px 56px; }
+      /* bottom padding leaves room for the fixed bottom icon nav,
+         so the last content on every screen is never hidden under it */
+      .wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px 128px; }
       /* talk view: the conversation timeline is the whole point of that
          screen, so it borrows back the page side padding and gets a
          wider column than the rest of the site. */
@@ -364,6 +366,37 @@
         min-height: 48px; box-shadow: var(--shadow-sm);
       }
       .back-btn:active { transform: scale(0.97); }
+
+      /* ---------- bottom icon nav (ported from the experimental version) ----------
+         A soft dark plum pill floating at the bottom of the screen, one
+         icon per screen; the screen you are on is shown as a pink pill.
+         z-index 40 keeps it under every modal (50), the toast (60), the
+         name gate (80) and the tutorial (90). While the talk keyboard is
+         open (body.chat-kb, phone widths) it hides completely, so it can
+         never float over the keyboard or cover the chat input bar — the
+         fixed-sheet chat layout keeps working exactly as before. */
+      .bottom-nav {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        padding: 0 12px max(env(safe-area-inset-bottom), 10px);
+      }
+      .bottom-nav-inner {
+        max-width: 560px; margin: 0 auto; display: flex; gap: 4px;
+        background: rgba(74, 68, 96, 0.85); border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 26px; padding: 6px; box-shadow: 0 10px 24px rgba(74, 52, 80, 0.35);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      }
+      .bottom-nav button {
+        flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 2px;
+        min-height: 52px; border: none; background: transparent; color: #c9bdd6;
+        border-radius: 16px; padding: 4px 2px; font-size: 11px; font-weight: 700; line-height: 1.25;
+      }
+      .bottom-nav button svg { flex: none; }
+      .bottom-nav button:active { transform: scale(0.97); }
+      .bottom-nav button.is-active { background: var(--pink-deep); color: #fff; box-shadow: var(--shadow-sm); }
+      @media (max-width: 700px) {
+        body.chat-kb .bottom-nav { display: none; }
+      }
       section.block > h2:focus { outline: none; }
       .profile-tools { margin-top: 8px; text-align: right; }
       .profile-tools .howto {
@@ -432,7 +465,7 @@
 
       /* toast */
       .toast {
-        position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+        position: fixed; left: 50%; bottom: calc(98px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px);
         background: var(--ink); color: var(--bg); font-weight: 800; border-radius: 999px;
         padding: 10px 22px; opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 60;
         max-width: calc(100vw - 32px); text-align: center;
@@ -1855,6 +1888,35 @@
       </footer>
     </div>
 
+    <!-- bottom icon nav: fixed at the bottom of the screen, one tap to
+         each screen (same set, order and icons as the experimental
+         version). The buttons reuse the existing [data-goto] wiring,
+         and showView() keeps the pink active pill in sync. -->
+    <nav class="bottom-nav" aria-label="画面の切り替え">
+      <div class="bottom-nav-inner">
+        <button type="button" data-goto="home" data-nav="home" class="is-active" aria-current="page">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 11 L12 4 L21 11" /><path d="M6 10 V20 H18 V10" /></svg>
+          やすむ場所
+        </button>
+        <button type="button" data-goto="talk" data-nav="talk">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8c-1.3 0-2.6-.3-3.7-.8L4 20l.9-4.2A8 8 0 1 1 21 12z" /></svg>
+          おはなし
+        </button>
+        <button type="button" data-goto="check" data-nav="check">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M8.5 12.5 L11 15 L15.5 9.5" /></svg>
+          チェック
+        </button>
+        <button type="button" data-goto="mogu" data-nav="mogu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="7" /><path d="M8 7 L6.5 3.5 L10 5" /><path d="M16 7 L17.5 3.5 L14 5" /></svg>
+          もぐりん
+        </button>
+        <button type="button" data-goto="chars" data-nav="chars">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="10" r="4" /><circle cx="16.5" cy="14" r="4.5" /></svg>
+          この子たち
+        </button>
+      </div>
+    </nav>
+
     <!-- reset modal -->
     <div class="modal-back" id="resetModal" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
       <div class="modal">
@@ -2645,8 +2707,21 @@
         document.getElementById("howtoBtn").addEventListener("click", openTutorial);
 
         /* ---------- view switching: screens that feel like separate pages ---------- */
+        /* bottom icon nav: the pink pill follows the current screen.
+           Views with no nav item of their own (help) leave all items
+           unlit, exactly like the experimental version's nav behaved
+           for its non-nav screens. */
+        function syncBottomNav(name) {
+          document.querySelectorAll(".bottom-nav [data-nav]").forEach(function (b) {
+            var on = b.getAttribute("data-nav") === name;
+            b.classList.toggle("is-active", on);
+            if (on) b.setAttribute("aria-current", "page");
+            else b.removeAttribute("aria-current");
+          });
+        }
         function showView(name, toRest) {
           document.body.setAttribute("data-view", name);
+          syncBottomNav(name);
           if (name === "talk") greetTurtle();
           if (toRest) {
             var rp = document.getElementById("restPlace");
